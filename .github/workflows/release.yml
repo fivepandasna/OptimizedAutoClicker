@@ -22,8 +22,10 @@ jobs:
       run: |
         echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-    - name: Setup MSVC
-      uses: microsoft/setup-msbuild@v2
+    - name: Setup MSVC Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
 
     - name: Create build directories
       shell: bash
@@ -34,7 +36,11 @@ jobs:
     - name: Compile application
       shell: cmd
       run: |
+        where cl
+        where rc
+
         rc /nologo /fo build\resource.res src\resource.rc
+
         cl src\OptimizedAutoClicker.cpp build\resource.res ^
           /Fe:build\app\OptimizedAutoClicker.exe ^
           /EHsc /O2 /MT ^
