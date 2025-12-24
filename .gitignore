@@ -1,1 +1,22 @@
-autoclicker.exe
+# Build outputs
+*.exe
+*.o
+*.obj
+
+# Installer output
+installer_output/
+installer/installer_output/
+
+# IDE files
+.vscode/
+.vs/
+*.suo
+*.user
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.log
