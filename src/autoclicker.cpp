@@ -9,6 +9,8 @@
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
+#define IDI_APPICON 101
+
 // Global variables
 HWND g_hwnd;
 HWND g_hoursEdit, g_minsEdit, g_secsEdit, g_msEdit;
@@ -145,6 +147,8 @@ void StartClicking() {
         g_clickThread = std::thread(ClickThreadFunc);
         EnableWindow(g_startBtn, FALSE);
         EnableWindow(g_stopBtn, TRUE);
+        InvalidateRect(g_startBtn, NULL, TRUE);
+        InvalidateRect(g_stopBtn, NULL, TRUE);
     }
 }
 
@@ -155,6 +159,8 @@ void StopClicking() {
         if (g_clickThread.joinable()) g_clickThread.join();
         EnableWindow(g_startBtn, TRUE);
         EnableWindow(g_stopBtn, FALSE);
+        InvalidateRect(g_startBtn, NULL, TRUE);
+        InvalidateRect(g_stopBtn, NULL, TRUE);
     }
 }
 
@@ -197,11 +203,22 @@ LRESULT CALLBACK ButtonProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             GetClientRect(hwnd, &rc);
             
             bool isStop = (hwnd == g_stopBtn);
+            bool isStart = (hwnd == g_startBtn);
             bool isHotkey = (hwnd == g_hotkeyBtn);
             bool isEnabled = IsWindowEnabled(hwnd);
-            COLORREF color = isStop ? STOP_COLOR : (isHotkey ? INPUT_BG : ACCENT_COLOR);
             
-            if (!isEnabled) color = RGB(60, 60, 65);
+            COLORREF color;
+            if (isHotkey) {
+                color = INPUT_BG;
+            } else if (isStop) {
+                // Stop button: red when enabled (clicking is active), gray when disabled
+                color = isEnabled ? STOP_COLOR : RGB(60, 60, 65);
+            } else if (isStart) {
+                // Start button: blue when enabled (not clicking), gray when disabled
+                color = isEnabled ? ACCENT_COLOR : RGB(60, 60, 65);
+            } else {
+                color = ACCENT_COLOR;
+            }
             
             HBRUSH brush = CreateSolidBrush(color);
             FillRect(hdc, &rc, brush);
@@ -345,6 +362,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     wc.lpszClassName = "AutoClickerClass";
     wc.hbrBackground = g_bgBrush;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPICON));
+    wc.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPICON));
     
     RegisterClassExA(&wc);
     
