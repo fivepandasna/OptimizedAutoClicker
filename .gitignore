@@ -3,9 +3,8 @@
 *.o
 *.obj
 
-# Installer output
-installer_output/
-installer/installer_output/
+# Builds
+build
 
 # IDE files
 .vscode/
