@@ -367,7 +367,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     
     RegisterClassExA(&wc);
     
-    g_hwnd = CreateWindowExA(0, "AutoClickerClass", "AutoClicker Pro",
+    g_hwnd = CreateWindowExA(0, "AutoClickerClass", "Optimized AutoClicker",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         CW_USEDEFAULT, CW_USEDEFAULT, 290, 380,
         NULL, NULL, hInstance, NULL);
