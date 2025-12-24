@@ -12,11 +12,13 @@
 // Global variables
 HWND g_hwnd;
 HWND g_hoursEdit, g_minsEdit, g_secsEdit, g_msEdit;
-HWND g_offsetEdit, g_hotkeyEdit;
+HWND g_offsetEdit, g_hotkeyBtn;
 HWND g_startBtn, g_stopBtn;
 std::atomic<bool> g_running(false);
+std::atomic<bool> g_recordingKey(false);
 std::thread g_clickThread;
 int g_startStopKey = VK_F6;
+std::string g_keyName = "F6";
 std::mt19937 g_rng(std::chrono::steady_clock::now().time_since_epoch().count());
 
 // Modern colors
@@ -30,6 +32,47 @@ const COLORREF STOP_COLOR = RGB(239, 68, 68);
 HBRUSH g_bgBrush = CreateSolidBrush(BG_COLOR);
 HBRUSH g_inputBrush = CreateSolidBrush(INPUT_BG);
 HFONT g_font;
+
+// Get key name from virtual key code
+std::string GetKeyName(int vk) {
+    switch (vk) {
+        case VK_F1: return "F1";
+        case VK_F2: return "F2";
+        case VK_F3: return "F3";
+        case VK_F4: return "F4";
+        case VK_F5: return "F5";
+        case VK_F6: return "F6";
+        case VK_F7: return "F7";
+        case VK_F8: return "F8";
+        case VK_F9: return "F9";
+        case VK_F10: return "F10";
+        case VK_F11: return "F11";
+        case VK_F12: return "F12";
+        case VK_SPACE: return "Space";
+        case VK_RETURN: return "Enter";
+        case VK_ESCAPE: return "Esc";
+        case VK_TAB: return "Tab";
+        case VK_BACK: return "Backspace";
+        default:
+            if (vk >= 'A' && vk <= 'Z') {
+                return std::string(1, (char)vk);
+            }
+            if (vk >= '0' && vk <= '9') {
+                return std::string(1, (char)vk);
+            }
+            return "Unknown";
+    }
+}
+
+// Update button text with current key
+void UpdateButtonText() {
+    std::string startText = "Start (" + g_keyName + ")";
+    std::string stopText = "Stop (" + g_keyName + ")";
+    SetWindowTextA(g_startBtn, startText.c_str());
+    SetWindowTextA(g_stopBtn, stopText.c_str());
+    InvalidateRect(g_startBtn, NULL, TRUE);
+    InvalidateRect(g_stopBtn, NULL, TRUE);
+}
 
 // Get interval in milliseconds
 int GetIntervalMs() {
@@ -120,6 +163,19 @@ HHOOK g_hook;
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0 && wParam == WM_KEYDOWN) {
         KBDLLHOOKSTRUCT* kbs = (KBDLLHOOKSTRUCT*)lParam;
+        
+        if (g_recordingKey) {
+            g_startStopKey = kbs->vkCode;
+            g_keyName = GetKeyName(kbs->vkCode);
+            std::string btnText = "Press a key... [" + g_keyName + "]";
+            SetWindowTextA(g_hotkeyBtn, btnText.c_str());
+            g_recordingKey = false;
+            
+            // Schedule update for next message loop iteration
+            PostMessage(g_hwnd, WM_USER + 1, 0, 0);
+            return 1;
+        }
+        
         if (kbs->vkCode == g_startStopKey) {
             if (g_running) StopClicking();
             else StartClicking();
@@ -141,8 +197,9 @@ LRESULT CALLBACK ButtonProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             GetClientRect(hwnd, &rc);
             
             bool isStop = (hwnd == g_stopBtn);
+            bool isHotkey = (hwnd == g_hotkeyBtn);
             bool isEnabled = IsWindowEnabled(hwnd);
-            COLORREF color = isStop ? STOP_COLOR : ACCENT_COLOR;
+            COLORREF color = isStop ? STOP_COLOR : (isHotkey ? INPUT_BG : ACCENT_COLOR);
             
             if (!isEnabled) color = RGB(60, 60, 65);
             
@@ -215,8 +272,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             y += 25;
             CreateWindowExA(0, "STATIC", "Start/Stop Key:", WS_CHILD | WS_VISIBLE,
                 20, y, 110, 20, hwnd, NULL, NULL, NULL);
-            g_hotkeyEdit = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "F6",
-                WS_CHILD | WS_VISIBLE | ES_UPPERCASE, 135, y-2, 115, 24, hwnd, NULL, NULL, NULL);
+            g_hotkeyBtn = CreateWindowExA(0, "BUTTON", "F6",
+                WS_CHILD | WS_VISIBLE | BS_OWNERDRAW, 135, y-2, 115, 28, hwnd, (HMENU)3, NULL, NULL);
             
             y += 45;
             g_startBtn = CreateWindowExA(0, "BUTTON", "Start (F6)",
@@ -229,6 +286,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             
             g_oldBtnProc = (WNDPROC)SetWindowLongPtrA(g_startBtn, GWLP_WNDPROC, (LONG_PTR)ButtonProc);
             SetWindowLongPtrA(g_stopBtn, GWLP_WNDPROC, (LONG_PTR)ButtonProc);
+            SetWindowLongPtrA(g_hotkeyBtn, GWLP_WNDPROC, (LONG_PTR)ButtonProc);
             
             // Apply font to all children
             EnumChildWindows(hwnd, [](HWND child, LPARAM lParam) -> BOOL {
@@ -251,6 +309,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case WM_COMMAND:
             if (LOWORD(wParam) == 1) StartClicking();
             else if (LOWORD(wParam) == 2) StopClicking();
+            else if (LOWORD(wParam) == 3) {
+                g_recordingKey = true;
+                SetWindowTextA(g_hotkeyBtn, "Press a key...");
+                InvalidateRect(g_hotkeyBtn, NULL, TRUE);
+            }
+            break;
+        
+        case WM_USER + 1:
+            SetWindowTextA(g_hotkeyBtn, g_keyName.c_str());
+            UpdateButtonText();
+            InvalidateRect(g_hotkeyBtn, NULL, TRUE);
             break;
         
         case WM_DESTROY:
