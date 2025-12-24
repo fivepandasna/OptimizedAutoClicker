@@ -1,0 +1,89 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0, v1.1, etc.
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Extract version from tag
+      id: get_version
+      shell: bash
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Setup MinGW
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: mingw-w64-x86_64-gcc mingw-w64-x86_64-tools-git
+    
+    - name: Build application
+      shell: msys2 {0}
+      run: |
+        mkdir -p build/app
+        windres src/resource.rc -O coff -o build/resource.o
+        g++ src/OptimizedAutoClicker.cpp build/resource.o -o build/app/OptimizedAutoClicker.exe -mwindows -O3 -lcomctl32 -static-libgcc -static-libstdc++
+    
+    - name: Verify build output
+      shell: bash
+      run: |
+        if [ ! -f "build/app/OptimizedAutoClicker.exe" ]; then
+          echo "Error: OptimizedAutoClicker.exe not found!"
+          exit 1
+        fi
+        ls -lh build/app/
+    
+    - name: Setup Inno Setup
+      run: |
+        choco install innosetup -y
+    
+    - name: Build installer
+      shell: cmd
+      run: |
+        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.get_version.outputs.VERSION }} setup.iss
+    
+    - name: Verify installer output
+      shell: bash
+      run: |
+        ls -lh build/installer/
+        if [ ! -f build/installer/OptimizedAutoClicker-Setup-*.exe ]; then
+          echo "Error: Installer not found!"
+          exit 1
+        fi
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          build/installer/*.exe
+          build/app/OptimizedAutoClicker.exe
+        body: |
+          ## Optimized AutoClicker ${{ github.ref_name }}
+          
+          ### Installation (Recommended)
+          Download and run `OptimizedAutoClicker-Setup-${{ steps.get_version.outputs.VERSION }}.exe`
+          
+          ### Standalone (Not Recommended)
+          Or download `OptimizedAutoClicker.exe` if you prefer not to install 
+          
+          ### Features
+          - High-performance auto-clicking
+          - Customizable intervals (hours/mins/secs/ms)
+          - Random offset for human-like behavior
+          - Configurable hotkey
+          - Modern dark UI
+          
+          ### Changelog
+          See commits since last release for details.
+        draft: true
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
