@@ -7,7 +7,7 @@ OptimizedAutoClicker
 ![oa_logo](https://raw.githubusercontent.com/fivepandasna/OptimizedAutoClicker/main/assets/icon.png)
 
 [![Discord](https://img.shields.io/badge/Discord-FivePandas-9089DA?logo=discord&style=for-the-badge)](https://discord.com/users/628709323068932125)
-[![Downloads](https://img.shields.io/github/downloads/fivepandasna/OptimizedAutoClicker/total?label=downloads&color=208a19&logo=github&style=for-the-badge)](https://github.com/fivepandasna/OptomizedAutoClicker/releases)
+[![Downloads](https://img.shields.io/github/downloads/fivepandasna/OptimizedAutoClicker/total?label=downloads&color=208a19&logo=github&style=for-the-badge)](https://github.com/fivepandasna/OptimizedAutoClicker/releases)
 </div>
 
 **OptimizedAutoClicker** is a highly efficient autoclicker written in C++. It is designed to deliver precise and fast clicking performance. Unlike other autoclickers, this tool can reliably handle timings below 10ms. Use with caution at such high speeds.
